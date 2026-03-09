@@ -36,6 +36,10 @@ export default function App() {
   const [slideModalGame, setSlideModalGame] = useState(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
+  // Trạng thái Lỗi Đăng Nhập
+  const [authError, setAuthError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   // Lắng nghe trạng thái đăng nhập
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -184,10 +188,21 @@ export default function App() {
         console.error("Lỗi đăng xuất:", error);
       }
     } else {
+      if (isLoggingIn) return;
+      setIsLoggingIn(true);
       try {
         await signInWithPopup(auth, googleProvider);
       } catch (error) {
         console.error("Lỗi đăng nhập:", error);
+        if (error.code === 'auth/popup-blocked') {
+          setAuthError("Trình duyệt đã chặn cửa sổ đăng nhập do ứng dụng đang chạy trong chế độ xem trước (Iframe). Vui lòng mở ứng dụng trong một thẻ mới để đăng nhập.");
+        } else if (error.code === 'auth/cancelled-popup-request') {
+          // Bỏ qua lỗi này vì người dùng có thể đã đóng popup hoặc click nhiều lần
+        } else if (error.code !== 'auth/popup-closed-by-user') {
+          setAuthError("Đã xảy ra lỗi khi đăng nhập. Vui lòng thử lại.");
+        }
+      } finally {
+        setIsLoggingIn(false);
       }
     }
   };
@@ -423,6 +438,23 @@ export default function App() {
             <div className="flex gap-4">
               <button onClick={() => setGameToDelete(null)} className="flex-1 p-4 bg-slate-100 rounded-2xl font-bold">Hủy</button>
               <button onClick={confirmDelete} className="flex-1 p-4 bg-red-500 text-white rounded-2xl font-bold">Xóa</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Lỗi Đăng Nhập */}
+      {authError && (
+        <div className="fixed inset-0 bg-black/85 flex justify-center items-center z-[80] p-5">
+          <div className="bg-white p-8 rounded-[35px] max-w-[400px] w-full text-center border-4 border-rose-600 animate-modalIn">
+            <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={32} />
+            </div>
+            <h2 className="text-2xl font-black uppercase mb-4">Lỗi Đăng Nhập</h2>
+            <p className="text-slate-600 mb-8 font-medium">{authError}</p>
+            <div className="flex flex-col gap-3">
+              <button onClick={() => window.open(window.location.href, '_blank')} className="w-full p-4 bg-rose-600 text-white rounded-2xl font-bold uppercase hover:bg-rose-700 transition-colors">Mở trong thẻ mới</button>
+              <button onClick={() => setAuthError('')} className="w-full p-4 bg-slate-100 text-slate-600 rounded-2xl font-bold uppercase hover:bg-slate-200 transition-colors">Đóng</button>
             </div>
           </div>
         </div>
