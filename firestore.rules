@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: games
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required, max 100 chars)
+    //   - icon: string (optional, max 1000000 chars for base64)
+    //   - rules: string (optional, max 5000 chars)
+    //   - link: string (required, max 1000 chars, valid URL)
+    //   - brand: string (optional, max 100 chars)
+    //   - device: string (optional, max 100 chars)
+    //   - slides: list of strings (optional, max 20 items, each max 1000000 chars)
+    //   - slideshowUrl: string (optional, max 1000 chars)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users
+    // Document ID: user uid
+    // Fields:
+    //   - email: string
+    //   - role: string ('admin')
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "nhanntl18402@gmail.com" && request.auth.token.email_verified == true)
+        );
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function isValidGame(data) {
+      return data.keys().hasAll(['title', 'link', 'createdAt']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.link is string && isValidUrl(data.link) && data.link.size() <= 1000 &&
+             data.createdAt is timestamp &&
+             (!('icon' in data) || (data.icon is string && data.icon.size() <= 1000000)) &&
+             (!('rules' in data) || (data.rules is string && data.rules.size() <= 5000)) &&
+             (!('brand' in data) || (data.brand is string && data.brand.size() <= 100)) &&
+             (!('device' in data) || (data.device is string && data.device.size() <= 100)) &&
+             (!('slideshowUrl' in data) || (data.slideshowUrl is string && data.slideshowUrl.size() <= 1000)) &&
+             (!('slides' in data) || (data.slides is list && data.slides.size() <= 20));
+    }
+
+    match /games/{gameId} {
+      // Public read for the showcase
+      allow read: if true;
+      allow create: if isAdmin() && isValidGame(request.resource.data);
+      allow update: if isAdmin() && isValidGame(request.resource.data) &&
+                    request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      allow write: if false; // Only manual DB edits or super admin can change roles
+    }
+  }
+}

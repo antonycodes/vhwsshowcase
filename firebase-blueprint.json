@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "Game": {
+      "title": "Game",
+      "description": "A game entry in the showcase.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the game." },
+        "icon": { "type": "string", "description": "The icon or image URL of the game." },
+        "rules": { "type": "string", "description": "The rules or description of the game." },
+        "link": { "type": "string", "description": "The URL to play the game." },
+        "brand": { "type": "string", "description": "The brand associated with the game." },
+        "device": { "type": "string", "description": "The device type for the game." },
+        "slides": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Array of base64 image strings for the gallery."
+        },
+        "slideshowUrl": { "type": "string", "description": "Google Slides embed URL." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." }
+      },
+      "required": ["title", "link", "createdAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile and role.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/games/{gameId}": {
+      "schema": { "$ref": "#/entities/Game" },
+      "description": "Collection of games."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Collection of users for RBAC."
+    }
+  }
+}
