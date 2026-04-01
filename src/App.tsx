@@ -4,7 +4,7 @@ import {
   AlertTriangle, Filter, ChevronLeft, ChevronRight, 
   Images, Presentation, CheckCircle2, Globe, Maximize2, Play
 } from 'lucide-react';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { db, auth, googleProvider } from './firebase';
 
@@ -42,9 +42,21 @@ export default function App() {
 
   // Lắng nghe trạng thái đăng nhập
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setIsAdmin(true);
+        // Kiểm tra email hardcoded
+        const isAdminEmail = user.email === 'nhanntl18402@gmail.com' && user.emailVerified;
+        if (isAdminEmail) {
+          setIsAdmin(true);
+        } else {
+          // Kiểm tra role trong Firestore collection users
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            setIsAdmin(userDoc.exists() && userDoc.data()?.role === 'admin');
+          } catch {
+            setIsAdmin(false);
+          }
+        }
       } else {
         setIsAdmin(false);
       }
