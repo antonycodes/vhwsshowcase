@@ -232,17 +232,11 @@ export default function App() {
         </button>
       </div>
 
-      <div className="flex justify-center py-5 mb-5">
-        <img 
-          src="" 
-          alt="VHWS GAME SHOWCASE" 
-          className="w-[200px] max-w-[250px] h-auto drop-shadow-md"
-        />
-      </div>
+  
 
       <header className="text-center mb-16">
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black mb-2 uppercase tracking-tighter text-rose-600 inline-block">
-          Try Our Games
+        <h1 className="text-4xl md:text-7xl lg:text-6xl font-black mb-2 uppercase tracking-tighter text-rose-600 inline-block">
+          VHWS - Try Our Games
         </h1>
         <div className="w-[100px] h-[6px] bg-rose-600 mx-auto my-4 rounded-full"></div>
       </header>
