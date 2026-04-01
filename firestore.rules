@@ -4,26 +4,34 @@ service cloud.firestore {
     // ===============================================================
     // Assumed Data Model
     // ===============================================================
-    // Collection: games
-    // Document ID: auto-generated
-    // Fields:
-    //   - title: string (required, max 100 chars)
-    //   - icon: string (optional, max 1000000 chars for base64)
-    //   - rules: string (optional, max 5000 chars)
-    //   - link: string (required, max 1000 chars, valid URL)
-    //   - brand: string (optional, max 100 chars)
-    //   - device: string (optional, max 100 chars)
-    //   - slides: list of strings (optional, max 20 items, each max 1000000 chars)
-    //   - slideshowUrl: string (optional, max 1000 chars)
-    //   - createdAt: timestamp (required)
     //
     // Collection: users
-    // Document ID: user uid
+    // Document ID: {userId}
     // Fields:
-    //   - email: string
-    //   - role: string ('admin')
+    //   - email: string (required) - User's email address
+    //   - role: string (required) - User's role ('admin' or 'user')
+    //
+    // Collection: game
+    // Document ID: inventory
+    // Fields:
+    //   - items: string (required) - JSON stringified map of InventoryItem objects
+    //
+    // Collection: logs
+    // Document ID: {logId}
+    // Fields:
+    //   - timestamp: string (required) - Formatted timestamp
+    //   - result: string (required) - Name of the gift
+    //   - type: string (required) - Type of the gift or 'none'
+    //   - userName: string (required) - User's display name
+    //   - userEmail: string (required) - User's email
+    //   - userId: string (required) - User's ID
+    //   - createdAt: timestamp (required) - Firestore timestamp
+    //
     // ===============================================================
 
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -37,35 +45,68 @@ service cloud.firestore {
         );
     }
 
-    function isValidUrl(url) {
-      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
     }
 
-    function isValidGame(data) {
-      return data.keys().hasAll(['title', 'link', 'createdAt']) &&
-             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
-             data.link is string && isValidUrl(data.link) && data.link.size() <= 1000 &&
-             data.createdAt is timestamp &&
-             (!('icon' in data) || (data.icon is string && data.icon.size() <= 1000000)) &&
-             (!('rules' in data) || (data.rules is string && data.rules.size() <= 5000)) &&
-             (!('brand' in data) || (data.brand is string && data.brand.size() <= 100)) &&
-             (!('device' in data) || (data.device is string && data.device.size() <= 100)) &&
-             (!('slideshowUrl' in data) || (data.slideshowUrl is string && data.slideshowUrl.size() <= 1000)) &&
-             (!('slides' in data) || (data.slides is list && data.slides.size() <= 20));
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
     }
 
-    match /games/{gameId} {
-      // Public read for the showcase
-      allow read: if true;
-      allow create: if isAdmin() && isValidGame(request.resource.data);
-      allow update: if isAdmin() && isValidGame(request.resource.data) &&
-                    request.resource.data.createdAt == resource.data.createdAt;
+    function isValidUser() {
+      return hasOnlyAllowedFields(['email', 'role']) &&
+             hasRequiredFields(['email', 'role']) &&
+             request.resource.data.email is string &&
+             request.resource.data.role in ['admin', 'user'];
+    }
+
+    function isValidInventory() {
+      return hasOnlyAllowedFields(['items']) &&
+             hasRequiredFields(['items']) &&
+             request.resource.data.items is string;
+    }
+
+    function isValidLogEntry() {
+      return hasOnlyAllowedFields(['timestamp', 'result', 'type', 'userName', 'userEmail', 'userId', 'createdAt']) &&
+             hasRequiredFields(['timestamp', 'result', 'type', 'userName', 'userEmail', 'userId', 'createdAt']) &&
+             request.resource.data.timestamp is string &&
+             request.resource.data.result is string &&
+             request.resource.data.type is string &&
+             request.resource.data.userName is string &&
+             request.resource.data.userEmail is string &&
+             request.resource.data.userId is string &&
+             request.resource.data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == userId && isValidUser() &&
+                    (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAdmin() && isValidUser();
       allow delete: if isAdmin();
     }
 
-    match /users/{userId} {
-      allow read: if isAuthenticated() && request.auth.uid == userId;
-      allow write: if false; // Only manual DB edits or super admin can change roles
+    match /game/inventory {
+      allow read: if true;
+      allow create: if isAdmin() && isValidInventory();
+      allow update: if isAuthenticated() && isValidInventory();
+      allow delete: if isAdmin();
+    }
+
+    match /game/settings {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && isValidLogEntry();
+      allow update: if false; // Logs are append-only
+      allow delete: if isAdmin(); // Allow admin to clear logs
     }
   }
 }
