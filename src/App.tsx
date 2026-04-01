@@ -234,8 +234,8 @@ export default function App() {
 
       <div className="flex justify-center py-5 mb-5">
         <img 
-          src="https://res.cloudinary.com/dxikjdqqn/image/upload/v1772852005/GAME_SHOWCASE_LOGO_rofj4l.png" 
-          alt="VHWS Logo" 
+          src="" 
+          alt="VHWS GAME SHOWCASE" 
           className="w-[200px] max-w-[250px] h-auto drop-shadow-md"
         />
       </div>
